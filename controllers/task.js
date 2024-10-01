@@ -126,6 +126,11 @@ module.exports = {
 
 	updateTask: (req, res) => {
 		try {
+
+			if(!isValidId(req.params.id)) {
+				return res.status(400).json({ error: 'Invalid task ID' })
+			}
+
 			const { title, description, completed, priority } = req.body
 			const tasks = readTasksFromFile()
 
@@ -154,6 +159,11 @@ module.exports = {
 
 	deleteTask: (req, res) => {
 		try {
+
+			if(!isValidId(req.params.id)) {
+				return res.status(400).json({ error: 'Invalid task ID' })
+			}
+
 			const tasks = readTasksFromFile()
 			const taskIndex = tasks.findIndex(t => t.id === parseInt(req.params.id))
 			if (taskIndex === -1) {
