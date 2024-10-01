@@ -4,18 +4,45 @@ const path = require('path')
 const taskFilePath = path.join(__dirname, '../task.json')
 
 const readTasksFromFile = () => {
-	const data = fs.readFileSync(taskFilePath, 'utf8')
-	const { tasks } = JSON.parse(data)
-	return tasks
+	try {
+		const data = fs.readFileSync(taskFilePath, 'utf8')
+		const { tasks } = JSON.parse(data)
+		return tasks
+	}
+	catch (err) {
+		throw 'Error occured while reading tasks from file'
+	}
 }
 
 const writeTasksToFile = (tasks) => {
-	const data = fs.readFileSync(taskFilePath, 'utf8')
+	try {
+		fs.readFile(taskFilePath, 'utf8', (err, data) => {
+			if (err) {
+				throw err
+			}
+			const jsonData = JSON.parse(data)
+			jsonData.tasks = tasks
 
-	const jsonData = JSON.parse(data)
-	jsonData.tasks = tasks
+			fs.writeFileSync(taskFilePath, JSON.stringify(jsonData, null, 2))
 
-	fs.writeFileSync(taskFilePath, JSON.stringify(jsonData, null, 2))
+		})
+	}
+	catch (err) {
+		throw 'Error occured while writing tasks into file'
+	}
+}
+
+const sortTasksByCreationDate = (tasks, order) => {
+	try {
+		if (order === 'asc') {
+			return tasks.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+		} else if (order === 'desc') {
+			return tasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+		}
+	}
+	catch(err) {
+		throw 'Error occured while sorting tasks'
+	}
 }
 
 const validateTask = (task) => (
@@ -24,6 +51,11 @@ const validateTask = (task) => (
 	typeof task.completed === 'boolean' &&
 	['low', 'medium', 'high'].includes(task.priority)
 )
+
+const isValidId = (id) => {
+    const parsedId = parseInt(id, 10);
+    return !isNaN(parsedId) && parsedId > 0 && Number.isInteger(parsedId);
+};
 
 module.exports = {
 
@@ -36,11 +68,7 @@ module.exports = {
 				tasks = tasks.filter(task => task.completed === isCompleted)
 			}
 
-			if (sort === 'asc') {
-				tasks.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-			} else if (sort === 'desc') {
-				tasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-			}
+			tasks = sortTasksByCreationDate(tasks, sort)
 
 			return res.status(200).json(tasks)
 		} catch (err) {
@@ -50,6 +78,10 @@ module.exports = {
 
 	getTaskById: (req, res) => {
 		try {
+
+			if(!isValidId(req.params.id)) {
+				return res.status(400).json({ error: 'Invalid task ID' })
+			}
 
 			const tasks = readTasksFromFile()
 			const task = tasks.find(t => t.id === parseInt(req.params.id))
